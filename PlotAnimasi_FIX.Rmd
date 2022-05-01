@@ -1,0 +1,185 @@
+---
+title: "PlotAnimasi_FIX"
+author: "Arya Candra Kusuma"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = F,
+                      warning = F,
+                      comment = "",
+                      fig.width = 10,
+                      fig.asp = 0.618)
+```
+
+Mungkin nanti untuk penjelasan syntaxnya. Kita praktikan juga kalau misalnya pakai gimana, kalau nggak pakai gimana gitu. Ya nambah-nambahin durasi bisa lah.
+
+# Plot 1
+
+```{r}
+library(gapminder)
+library(tidyverse)
+
+gapminder
+
+plot1_static <- ggplot(data = gapminder)+
+  geom_point(
+    aes(x = gdpPercap,
+        y = lifeExp,
+        size = pop,
+        color = continent),
+    alpha = 0.8,
+    show.legend = F)+
+  # pisah per continent
+  facet_wrap(~continent)+
+  # skala jadiin logaritma aja
+  scale_x_log10()+
+  # biar titiknya nggak kecil-kecil amat
+  scale_size(range = c(2, 12))+
+  theme_bw()
+
+plot1_static
+
+library(gganimate)
+plot1_animasi <- plot1_static +
+  # transition time akan membuat frame-frame yang akan ditunjukkan untuk tiap tahunnya
+  transition_time(year)+
+  # perhatikan title akan berubah untuk setiap frame time
+  labs(
+    title = "Tahun : {frame_time}",
+    x = "Pendapatan Perkapita",
+    y = "Usia Harapan Hidup")
+
+#pengaturan animasi nframes adalah banyaknya frame, sedangkan fps adalah frame per seconds
+animate(plot1_animasi,
+        nframes = 300,
+        fps = 30)
+```
+
+# Plot 2
+
+```{r}
+plot2_static <- gapminder %>%
+  #ambil negara
+  filter(
+    country %in% c("Indonesia", "Malaysia", "Cambodia",
+                   "Vietnam", "Thailand", "Singapore")) %>%
+  ggplot(aes(x = year,
+          y = lifeExp,
+          group = country))+
+    geom_line(
+      aes(color = country),
+      size = 1.5,
+      show.legend = F)+
+    geom_label(
+      aes(label = country),
+      alpha = 0.6)+
+    labs(
+      title = "Perkembangan Usia Harapan Hidup tiap Tahun",
+      y = "Angka Harapan Hidup",
+      x = "Tahun")+
+    theme_bw()
+
+plot2_static
+
+plot2_animasi <- plot2_static +
+  #transition reveal akan menunjukkan transisi secara sekuensial sehingga tiap tahun akan dihold dahulu, lalu ditunjukkan secara perlahan
+  transition_reveal(year)+
+  #enter drift agar memberikan efek pergeseran untuk frame baru yang muncul
+  enter_drift()
+
+# buat animasi
+animate(plot2_animasi,
+        nframes = 300,
+        fps = 30)
+```
+
+
+# Plot 3
+
+```{r}
+library(nycflights13)
+library(lubridate)
+
+
+flights
+# hitung berapa penerbangan tiap hari
+n_flights <- flights %>%
+  mutate(
+    date = make_date(year, month, day)) %>%
+  group_by(date) %>%
+  count(date) %>%
+  ungroup()
+
+n_flights
+
+# tambahkan hari dan bulan
+n_flights <- n_flights %>%
+  mutate(
+    day = wday(date, label = T, abbr = F),
+    month = month(date, label = T, abbr = F))
+
+plot3_static <- ggplot(data = n_flights,
+       aes(x = day,
+           y = n,
+           fill = day))+
+  geom_boxplot(show.legend = F,
+               alpha = 0.8)+
+  theme_bw()+
+  scale_fill_brewer(type = "qual",
+                    palette = 3)
+plot3_static
+
+plot3_animasi <- plot3_static +
+  # states akan memberikan efek pergantian states. Sama seperti transition time. Perbedaannya dengan transition time, transition state tidak akan menginterpolasi antar frame nya.
+  transition_states(month)+
+  # untuk memberikan efek muncul secara perlahan
+  enter_appear()+
+  # memberikan efek menghilang secara perlahan
+  exit_fade()+
+  # perhatikan judul akan berubah untuk setiap state
+  labs(
+    title = "Bulan : {closest_state}",
+    x = "",
+    y = "Count")
+
+animate(plot3_animasi,
+        nframes = 300,
+        fps = 30)
+```
+
+# Plot 4
+
+```{r}
+plot4_static <- n_flights %>%
+  # hitung banyaknya penerbangan tiap bulan
+  count(month,
+        wt = n) %>%
+  ungroup() %>%
+  # buat barplot
+  ggplot(
+    aes(x = month,
+        y = n,
+        fill = month))+
+    geom_col(show.legend = F)+
+    labs(title = "Count of Flights in 2013 from NYC",
+         y = "count")+
+    theme_bw()
+
+plot4_static
+
+plot4_animasi <- plot4_static +
+  # tunjukkan barplot untuk setiap bulan
+  transition_states(month)+
+  # untuk meninggalkan jejak barplot, berikan shadow mark
+  shadow_mark() +
+  # untuk membuat efek tidak muncul secara tiba-tiba
+  enter_grow()
+
+animate(plot4_animasi,
+        nframes = 360,
+        fps = 30)
+```
+
